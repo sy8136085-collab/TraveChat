@@ -6,13 +6,13 @@ from collections import Counter
 import os
 
 app = Flask(__name__)
-CORS(app)
+CORS(app)   # Ye line bahut important hai frontend ke liye
 
 # ==================== Load Both Files ====================
 def load_all_articles():
     all_articles = []
 
-    # 1. Load JSON file (Firecrawl)
+    # 1. Load JSON file
     if os.path.exists('articles.json'):
         try:
             with open('articles.json', 'r', encoding='utf-8') as f:
@@ -62,23 +62,20 @@ def load_all_articles():
 
 articles = load_all_articles()
 
-# ==================== Short Summarizer ====================
+# ==================== Short Summarizer (same rakho) ====================
 def create_short_reply(text, max_words=80):
     if not text or len(text) < 20:
         return "Information nahi mili is topic par."
     
-    # Sentences mein tod do
     sentences = re.split(r'[.!?]+', text)
     sentences = [s.strip() for s in sentences if len(s.strip()) > 15]
     
     if len(sentences) <= 3:
         return " ".join(sentences[:3])
     
-    # Word frequency
     words = re.findall(r'\w+', text.lower())
     word_freq = Counter(words)
     
-    # Score sentences
     scored = []
     for sent in sentences:
         score = sum(word_freq.get(w, 0) for w in re.findall(r'\w+', sent.lower()))
@@ -87,7 +84,6 @@ def create_short_reply(text, max_words=80):
     scored.sort(reverse=True)
     summary = ". ".join([sent for _, sent in scored[:5]]) + "."
     
-    # Word limit
     word_list = summary.split()
     if len(word_list) > max_words:
         summary = " ".join(word_list[:max_words]) + "..."
@@ -111,7 +107,6 @@ def chat():
         title_lower = art["title"].lower()
         content_lower = art["content"].lower()
         
-        # Title ko zyada importance do
         title_score = sum(1 for word in user_msg.split() if len(word) > 2 and word in title_lower)
         content_score = sum(1 for word in user_msg.split() if len(word) > 2 and word in content_lower)
         
@@ -123,7 +118,7 @@ def chat():
             best_url = art["url"]
             best_summary = create_short_reply(art["content"], max_words=85)
 
-    if best_score < 2:   # Kam match mila to
+    if best_score < 2:
         return jsonify({"reply": "Sorry, is topic par abhi clear information nahi mili. Thoda aur specific poochho!"})
 
     reply = f"**{best_title}**\n\n{best_summary}\n\n🔗 {best_url}"
@@ -131,6 +126,8 @@ def chat():
     return jsonify({"reply": reply})
 
 
+# ==================== IMPORTANT: Render ke liye yeh part badal do ====================
 if __name__ == '__main__':
     print("🚀 TraveChat Backend Started - Both JSON & TXT supported!")
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)   # debug=False rakho
